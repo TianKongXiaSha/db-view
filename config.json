@@ -1,0 +1,8 @@
+{
+  "scripts_dir": "/Users/baining/Downloads/all_mysql_datasource",
+  "mysql_bin": "",
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5001
+  }
+}

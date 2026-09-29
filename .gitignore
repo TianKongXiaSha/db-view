@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# 运行时产物
+logs/
+*.log
+server.pid
+
+# 依赖（本项目零依赖，预留）
+node_modules/

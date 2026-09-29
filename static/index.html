@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>db-view · MySQL 快速连接</title>
+<link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+<div class="layout">
+  <!-- 左侧：文件检索 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">DB</div>
+      <div class="brand-text">
+        <h1>db-view</h1>
+        <span id="dirInfo" class="dir-info">加载中…</span>
+      </div>
+    </div>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" class="search-icon"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="text" placeholder="模糊搜索文件名…" autocomplete="off" spellcheck="false">
+      <button id="clearBtn" class="clear-btn" title="清空">&times;</button>
+    </div>
+    <div id="fileStats" class="file-stats"></div>
+    <div id="fileList" class="file-list"></div>
+  </aside>
+
+  <!-- 右侧：连接与 SQL 执行 -->
+  <main class="main">
+    <div id="emptyState" class="empty-state">
+      <div class="empty-icon">⌘</div>
+      <h2>选择左侧文件开始</h2>
+      <p>选中文件后（不限格式），将解析其中的 mysql 连接命令并自动建立连接，随后即可浏览数据库/表或输入 SQL 执行。</p>
+    </div>
+
+    <div id="workArea" class="work-area hidden">
+      <!-- 连接信息 -->
+      <section class="conn-card">
+        <div class="conn-header">
+          <div class="conn-title">
+            <span id="connFile" class="conn-file">—</span>
+            <span id="connStatus" class="status-badge disconnected">未连接</span>
+          </div>
+          <div class="conn-actions">
+            <button id="connectBtn" class="btn btn-primary">连接</button>
+            <button id="disconnectBtn" class="btn btn-ghost hidden">断开</button>
+          </div>
+        </div>
+        <div id="connParams" class="conn-params"></div>
+        <div id="connError" class="conn-error hidden"></div>
+      </section>
+
+      <!-- 对象浏览器：库 → 表 → 数据 -->
+      <section id="explorerCard" class="explorer-card hidden">
+        <div class="explorer-toolbar">
+          <span class="sql-label">对象浏览器<span id="expBreadcrumb" class="exp-breadcrumb"></span></span>
+          <div class="exp-toolbar-actions">
+            <label class="exp-limit">预览行数
+              <select id="previewLimit">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+            <button id="exportTableBtn" class="btn btn-ghost btn-sm" disabled title="导出当前选中表的全部数据">导出当前表</button>
+            <button id="refreshDbBtn" class="btn btn-ghost btn-sm">刷新</button>
+          </div>
+        </div>
+        <div class="explorer-body">
+          <div class="exp-col">
+            <div class="exp-col-title">数据库</div>
+            <div id="dbList" class="exp-list"></div>
+          </div>
+          <div class="exp-col">
+            <div class="exp-col-title" id="tableColTitle">数据表</div>
+            <div id="tableList" class="exp-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SQL 编辑区 -->
+      <section class="sql-card">
+        <div class="sql-toolbar">
+          <span class="sql-label">SQL 语句（支持分号分隔多条执行）</span>
+          <div class="sql-toolbar-actions">
+            <select id="maxRows" title="最大返回行数">
+              <option value="100">100 行</option>
+              <option value="500" selected>500 行</option>
+              <option value="1000">1000 行</option>
+              <option value="5000">5000 行</option>
+            </select>
+            <button id="runBtn" class="btn btn-primary" disabled>执行 (Ctrl+Enter)</button>
+          </div>
+        </div>
+        <div id="sqlPresets" class="sql-presets"></div>
+        <textarea id="sqlInput" placeholder="SELECT * FROM your_table LIMIT 10;" spellcheck="false"></textarea>
+      </section>
+
+      <!-- 结果区 -->
+      <section id="resultArea" class="result-area"></section>
+    </div>
+  </main>
+</div>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<script src="/static/app.js?v=2"></script>
+</body>
+</html>
