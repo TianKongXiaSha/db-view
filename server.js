@@ -326,6 +326,23 @@ const server = http.createServer(async (req, res) => {
       } catch (e) { return sendJson(res, 400, { error: e.message }); }
     }
 
+    /* 库内全部表的字段名（供前端 SQL 联想） */
+    if (p === "/api/table/columns/all") {
+      try {
+        const params = getParamsFor(url.searchParams.get("path") || "");
+        const db = url.searchParams.get("db") || "";
+        quoteIdent(db);
+        const out = await runMysql(params,
+          "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = " + quoteStr(db) + " ORDER BY TABLE_NAME, ORDINAL_POSITION", 20000);
+        const tables = {};
+        for (const r of parseTsv(out).rows) {
+          if (!r[0]) continue;
+          (tables[r[0]] = tables[r[0]] || []).push(r[1]);
+        }
+        return sendJson(res, 200, { tables });
+      } catch (e) { return sendJson(res, 400, { error: e.message }); }
+    }
+
     if (p === "/api/table/data") {
       try {
         const params = getParamsFor(url.searchParams.get("path") || "");

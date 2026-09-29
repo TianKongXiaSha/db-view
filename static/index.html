@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>db-view · MySQL 快速连接</title>
-<link rel="stylesheet" href="/static/style.css?v=2">
+<link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
 <div class="layout">
@@ -83,7 +83,7 @@
       <!-- SQL 编辑区 -->
       <section class="sql-card">
         <div class="sql-toolbar">
-          <span class="sql-label">SQL 语句（支持分号分隔多条执行）</span>
+          <span class="sql-label">SQL 语句（支持分号分隔多条执行，Ctrl+Space 触发联想）</span>
           <div class="sql-toolbar-actions">
             <select id="maxRows" title="最大返回行数">
               <option value="100">100 行</option>
@@ -95,7 +95,11 @@
           </div>
         </div>
         <div id="sqlPresets" class="sql-presets"></div>
-        <textarea id="sqlInput" placeholder="SELECT * FROM your_table LIMIT 10;" spellcheck="false"></textarea>
+        <div class="sql-editor">
+          <pre id="sqlHighlight" class="sql-highlight" aria-hidden="true"></pre>
+          <textarea id="sqlInput" placeholder="SELECT * FROM your_table LIMIT 10;" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+          <div id="sqlSuggest" class="sql-suggest hidden" role="listbox"></div>
+        </div>
       </section>
 
       <!-- 结果区 -->
@@ -106,6 +110,6 @@
 
 <div id="toastWrap" class="toast-wrap"></div>
 
-<script src="/static/app.js?v=2"></script>
+<script src="/static/app.js?v=3"></script>
 </body>
 </html>
