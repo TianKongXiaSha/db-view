@@ -44,9 +44,8 @@ function highlightKeyword(name, kw) {
 }
 
 async function api(url, options = {}) {
-  if (!url.startsWith("/api/auth/")) {
-    options.headers = Object.assign({}, options.headers, { "X-Auth-Token": getAuthToken() });
-  }
+  // 统一携带会话 token（verify 接口不依赖该头，携带无影响）
+  options.headers = Object.assign({}, options.headers, { "X-Auth-Token": getAuthToken() });
   const resp = await fetch(url, options);
   let data = null;
   try { data = await resp.json(); } catch (e) { /* ignore */ }
@@ -847,7 +846,7 @@ function initApp() {
     hideAuthGate();
     initApp();
   } catch (e) {
-    // 401 已由 api() 弹出校验层；无 token 时主动弹出
-    if (!getAuthToken()) showAuthGate();
+    // 无 token 或 token 已失效（如服务重启），均弹出校验层
+    showAuthGate(getAuthToken() ? "会话已失效（服务可能已重启），请重新校验" : "");
   }
 })();
