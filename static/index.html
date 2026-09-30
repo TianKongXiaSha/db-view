@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>db-view · MySQL 快速连接</title>
-<link rel="stylesheet" href="/static/style.css?v=3">
+<link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
 <div class="layout">
@@ -55,6 +55,11 @@
       <section id="explorerCard" class="explorer-card hidden">
         <div class="explorer-toolbar">
           <span class="sql-label">对象浏览器<span id="expBreadcrumb" class="exp-breadcrumb"></span></span>
+          <div class="exp-global-search">
+            <svg viewBox="0 0 24 24" class="gs-icon"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="tableSearchInput" type="text" placeholder="全局检索表名 / 注释（跨库）…" autocomplete="off" spellcheck="false">
+            <div id="tableSearchResults" class="exp-search-results hidden"></div>
+          </div>
           <div class="exp-toolbar-actions">
             <label class="exp-limit">预览行数
               <select id="previewLimit">
@@ -71,10 +76,12 @@
         <div class="explorer-body">
           <div class="exp-col">
             <div class="exp-col-title">数据库</div>
+            <div class="exp-filter"><input id="dbFilterInput" type="text" placeholder="过滤数据库…" autocomplete="off" spellcheck="false"></div>
             <div id="dbList" class="exp-list"></div>
           </div>
           <div class="exp-col">
             <div class="exp-col-title" id="tableColTitle">数据表</div>
+            <div class="exp-filter"><input id="tableFilterInput" type="text" placeholder="过滤表名 / 注释…" autocomplete="off" spellcheck="false"></div>
             <div id="tableList" class="exp-list"></div>
           </div>
         </div>
@@ -122,6 +129,6 @@
   </div>
 </div>
 
-<script src="/static/app.js?v=5"></script>
+<script src="/static/app.js?v=6"></script>
 </body>
 </html>

@@ -363,6 +363,25 @@ const server = http.createServer(async (req, res) => {
       } catch (e) { return sendJson(res, 400, { error: e.message }); }
     }
 
+    /* 跨库检索表名/表注释（大小写不敏感模糊匹配） */
+    if (p === "/api/search") {
+      try {
+        const params = getParamsFor(url.searchParams.get("path") || "");
+        const kw = (url.searchParams.get("keyword") || "").trim().slice(0, 100);
+        const dbFilter = url.searchParams.get("db") || "";
+        if (dbFilter) quoteIdent(dbFilter);
+        if (!kw) return sendJson(res, 200, { results: [], total: 0 });
+        const like = "%" + kw.replace(/[\\%_]/g, c => "\\" + c) + "%";
+        let sql = "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, TABLE_COMMENT FROM information_schema.TABLES" +
+          " WHERE (TABLE_NAME LIKE " + quoteStr(like) + " ESCAPE '\\\\' OR TABLE_COMMENT LIKE " + quoteStr(like) + " ESCAPE '\\\\')";
+        if (dbFilter) sql += " AND TABLE_SCHEMA = " + quoteStr(dbFilter);
+        sql += " ORDER BY TABLE_SCHEMA, TABLE_NAME LIMIT 500";
+        const out = await runMysql(params, sql, 15000);
+        const rows = parseTsv(out).rows.map(r => ({ db: r[0], name: r[1], type: r[2] || "", comment: r[3] || "" }));
+        return sendJson(res, 200, { results: rows, total: rows.length, truncated: rows.length >= 500 });
+      } catch (e) { return sendJson(res, 400, { error: e.message }); }
+    }
+
     /* 库内全部表的字段名（供前端 SQL 联想） */
     if (p === "/api/table/columns/all") {
       try {

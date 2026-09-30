@@ -4,6 +4,9 @@ let connected = false;
 let searchTimer = null;
 let selectedDb = null;     // 对象浏览器当前库
 let selectedTable = null;  // 对象浏览器当前表
+let currentDbs = [];       // 当前连接的库列表（供过滤）
+let currentTables = [];    // 当前库的表列表（供过滤）
+let gsTimer = null;        // 全局表检索防抖
 
 /* 访问密钥校验 */
 const AUTH_TOKEN_KEY = "dbview_auth_token";
@@ -118,6 +121,13 @@ $("clearBtn").addEventListener("click", () => {
 function resetExplorer() {
   selectedDb = null;
   selectedTable = null;
+  currentDbs = [];
+  currentTables = [];
+  $("dbFilterInput").value = "";
+  $("tableFilterInput").value = "";
+  $("tableSearchInput").value = "";
+  $("tableSearchResults").classList.add("hidden");
+  $("tableSearchResults").innerHTML = "";
   $("explorerCard").classList.add("hidden");
   $("dbList").innerHTML = "";
   $("tableList").innerHTML = "";
@@ -130,23 +140,46 @@ function showExplorer() {
   loadDatabases();
 }
 
+/* 库 / 表列表渲染（带过滤关键字） */
+function renderDbList(kw) {
+  if (!currentDbs.length) { $("dbList").innerHTML = `<div class="exp-empty">没有可见数据库</div>`; return; }
+  const lower = (kw || "").toLowerCase();
+  const dbs = lower ? currentDbs.filter(d => d.toLowerCase().includes(lower)) : currentDbs;
+  if (!dbs.length) { $("dbList").innerHTML = `<div class="exp-empty">没有匹配的数据库</div>`; return; }
+  $("dbList").innerHTML = dbs.map(d =>
+    `<div class="exp-item${d === selectedDb ? " active" : ""}" data-db="${escapeHtml(d)}" title="${escapeHtml(d)}"><span class="exp-ico">⛁</span><span class="exp-name">${highlightKeyword(d, kw)}</span></div>`).join("");
+}
+
+function renderTableList(kw) {
+  if (!currentTables.length) { $("tableList").innerHTML = `<div class="exp-empty">该库没有表</div>`; return; }
+  const lower = (kw || "").toLowerCase();
+  const tables = lower
+    ? currentTables.filter(t => t.name.toLowerCase().includes(lower) || (t.comment || "").toLowerCase().includes(lower))
+    : currentTables;
+  if (!tables.length) { $("tableList").innerHTML = `<div class="exp-empty">没有匹配的数据表</div>`; return; }
+  $("tableList").innerHTML = tables.map(t => `
+    <div class="exp-item" data-table="${escapeHtml(t.name)}" title="${escapeHtml(t.comment || t.name)}">
+      <span class="exp-ico">${String(t.type).toUpperCase().includes("VIEW") ? "◫" : "▤"}</span>
+      <span class="exp-name">${highlightKeyword(t.name, kw)}</span>
+      ${t.row_est ? `<span class="exp-rows" title="估算行数">≈${escapeHtml(String(t.row_est))}</span>` : ""}
+      <button class="exp-struct" data-act="struct" title="查看表结构">结构</button>
+    </div>`).join("");
+}
+
 async function loadDatabases() {
   selectedDb = null;
   selectedTable = null;
-  $("dbList").innerHTML = `<div class="exp-empty">加载中…</div>`;
+  $("dbFilterInput").value = "";
+  $("tableFilterInput").value = "";
   $("tableList").innerHTML = `<div class="exp-empty">← 先选择数据库</div>`;
   $("tableColTitle").textContent = "数据表";
   $("expBreadcrumb").textContent = "";
+  $("dbList").innerHTML = `<div class="exp-empty">加载中…</div>`;
   try {
     const data = await api(`/api/databases?path=${encodeURIComponent(selectedFile)}`);
-    const dbs = data.databases || [];
-    schemaDbs = dbs;
-    if (!dbs.length) {
-      $("dbList").innerHTML = `<div class="exp-empty">没有可见数据库</div>`;
-      return;
-    }
-    $("dbList").innerHTML = dbs.map(d =>
-      `<div class="exp-item" data-db="${escapeHtml(d)}" title="${escapeHtml(d)}"><span class="exp-ico">⛁</span>${escapeHtml(d)}</div>`).join("");
+    currentDbs = data.databases || [];
+    schemaDbs = currentDbs;
+    renderDbList("");
   } catch (e) {
     $("dbList").innerHTML = `<div class="exp-empty">加载失败：${escapeHtml(e.message)}</div>`;
   }
@@ -155,6 +188,8 @@ async function loadDatabases() {
 async function loadTables(db) {
   selectedDb = db;
   selectedTable = null;
+  currentTables = [];
+  $("tableFilterInput").value = "";
   $("tableColTitle").textContent = `数据表（${db}）`;
   $("expBreadcrumb").textContent = db;
   $("tableList").innerHTML = `<div class="exp-empty">加载中…</div>`;
@@ -163,24 +198,18 @@ async function loadTables(db) {
   $("resultArea").innerHTML = "";
   try {
     const data = await api(`/api/tables?path=${encodeURIComponent(selectedFile)}&db=${encodeURIComponent(db)}`);
-    const tables = data.tables || [];
-    schemaTables[db] = tables.map(t => t.name);
+    currentTables = data.tables || [];
+    schemaTables[db] = currentTables.map(t => t.name);
     loadAllColumns(db); // 后台拉取字段，供 SQL 联想使用
-    if (!tables.length) {
-      $("tableList").innerHTML = `<div class="exp-empty">该库没有表</div>`;
-      return;
-    }
-    $("tableList").innerHTML = tables.map(t => `
-      <div class="exp-item" data-table="${escapeHtml(t.name)}" title="${escapeHtml(t.comment || t.name)}">
-        <span class="exp-ico">${String(t.type).toUpperCase().includes("VIEW") ? "◫" : "▤"}</span>
-        <span class="exp-name">${escapeHtml(t.name)}</span>
-        ${t.row_est ? `<span class="exp-rows" title="估算行数">≈${escapeHtml(String(t.row_est))}</span>` : ""}
-        <button class="exp-struct" data-act="struct" title="查看表结构">结构</button>
-      </div>`).join("");
+    renderTableList("");
   } catch (e) {
     $("tableList").innerHTML = `<div class="exp-empty">加载失败：${escapeHtml(e.message)}</div>`;
   }
 }
+
+/* 库 / 表过滤输入框（客户端实时过滤） */
+$("dbFilterInput").addEventListener("input", () => renderDbList($("dbFilterInput").value.trim()));
+$("tableFilterInput").addEventListener("input", () => renderTableList($("tableFilterInput").value.trim()));
 
 async function loadAllColumns(db) {
   if (!db || columnsLoaded.has(db)) return;
@@ -265,6 +294,64 @@ $("tableList").addEventListener("click", (e) => {
 $("refreshDbBtn").addEventListener("click", () => {
   if (!connected) { toast("请先连接数据库", "error"); return; }
   if (selectedDb) loadTables(selectedDb); else loadDatabases();
+});
+
+/* ---------------- 全局表检索（跨库，服务端模糊匹配表名/注释） ---------------- */
+function hideGlobalSearch() {
+  $("tableSearchResults").classList.add("hidden");
+  $("tableSearchResults").innerHTML = "";
+}
+
+async function globalSearch() {
+  const kw = $("tableSearchInput").value.trim();
+  const box = $("tableSearchResults");
+  if (!kw) return hideGlobalSearch();
+  if (!connected) { toast("请先连接数据库", "error"); return hideGlobalSearch(); }
+  box.innerHTML = `<div class="gs-item gs-empty">搜索中…</div>`;
+  box.classList.remove("hidden");
+  try {
+    const data = await api(`/api/search?path=${encodeURIComponent(selectedFile)}&keyword=${encodeURIComponent(kw)}`);
+    const rows = data.results || [];
+    if (!rows.length) {
+      box.innerHTML = `<div class="gs-item gs-empty">没有匹配的表</div>`;
+      return;
+    }
+    box.innerHTML = rows.map(r => `
+      <div class="gs-item" data-db="${escapeHtml(r.db)}" data-table="${escapeHtml(r.name)}" title="${escapeHtml(r.db + "." + r.name + (r.comment ? " — " + r.comment : ""))}">
+        <span class="gs-db">${escapeHtml(r.db)}</span>
+        <span class="gs-table">${highlightKeyword(r.name, kw)}</span>
+        ${r.comment ? `<span class="gs-comment">${highlightKeyword(r.comment, kw)}</span>` : ""}
+      </div>`).join("") +
+      (data.truncated ? `<div class="gs-item gs-empty">结果过多，仅显示前 ${rows.length} 条，请细化关键字</div>` : "");
+  } catch (e) {
+    box.innerHTML = `<div class="gs-item gs-empty">搜索失败：${escapeHtml(e.message)}</div>`;
+  }
+}
+
+$("tableSearchInput").addEventListener("input", () => {
+  clearTimeout(gsTimer);
+  gsTimer = setTimeout(globalSearch, 300);
+});
+$("tableSearchInput").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); hideGlobalSearch(); }
+  if (e.key === "Enter") { e.preventDefault(); clearTimeout(gsTimer); globalSearch(); }
+});
+
+$("tableSearchResults").addEventListener("mousedown", async (e) => {
+  const item = e.target.closest(".gs-item[data-db]");
+  if (!item) return;
+  e.preventDefault(); // 阻止输入框失焦前闪烁
+  const db = item.dataset.db, table = item.dataset.table;
+  hideGlobalSearch();
+  $("tableSearchInput").value = "";
+  try {
+    await loadTables(db);
+    await previewTable(db, table);
+  } catch (err) { toast("打开表失败：" + err.message, "error"); }
+});
+
+document.addEventListener("mousedown", (e) => {
+  if (!e.target.closest(".exp-global-search")) hideGlobalSearch();
 });
 
 /* 导出：结果区按钮（按 SQL 导出）与对象浏览器按钮（整表导出） */

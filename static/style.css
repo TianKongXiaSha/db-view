@@ -305,6 +305,51 @@ td.null { color: var(--text-dim); font-style: italic; }
   font-size: 11px; color: var(--text-dim); padding: 6px 12px;
   border-bottom: 1px solid var(--border); background: var(--panel-2);
 }
+/* 库 / 表过滤输入框 */
+.exp-filter { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.exp-filter input {
+  width: 100%; padding: 5px 9px;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-size: 12px; font-family: var(--mono); outline: none;
+  transition: border-color .15s;
+}
+.exp-filter input:focus { border-color: var(--primary); }
+.exp-filter input::placeholder { color: var(--text-dim); font-family: inherit; }
+/* 全局表检索 */
+.exp-global-search { position: relative; flex: 1; max-width: 340px; margin: 0 12px; }
+.exp-global-search .gs-icon {
+  position: absolute; left: 8px; top: 8px; width: 13px; height: 13px;
+  color: var(--text-dim); pointer-events: none;
+}
+.exp-global-search input {
+  width: 100%; padding: 6px 10px 6px 26px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-size: 12px; font-family: var(--mono); outline: none;
+  transition: border-color .15s;
+}
+.exp-global-search input:focus { border-color: var(--primary); }
+.exp-global-search input::placeholder { color: var(--text-dim); }
+.exp-search-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+  max-height: 320px; overflow-y: auto; padding: 4px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+.gs-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 5px; cursor: pointer;
+  font-family: var(--mono); font-size: 12px;
+}
+.gs-item:hover { background: rgba(79,124,255,.22); }
+.gs-item mark { background: rgba(79,124,255,.35); color: inherit; border-radius: 2px; }
+.gs-item.gs-empty { color: var(--text-dim); cursor: default; justify-content: center; }
+.gs-item.gs-empty:hover { background: none; }
+.gs-db { flex: none; color: var(--amber); font-size: 11px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+.gs-table { flex: none; color: var(--green); }
+.gs-comment {
+  flex: 1; min-width: 0; color: var(--text-dim); font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .exp-list { max-height: 260px; overflow-y: auto; }
 .exp-item {
   display: flex; align-items: center; gap: 7px;
