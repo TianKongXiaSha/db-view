@@ -110,6 +110,18 @@
 
 <div id="toastWrap" class="toast-wrap"></div>
 
-<script src="/static/app.js?v=3"></script>
+<!-- 访问密钥校验层 -->
+<div id="authGate" class="auth-gate hidden">
+  <div class="auth-card">
+    <div class="brand-icon">DB</div>
+    <h2>访问校验</h2>
+    <p class="auth-tip">请输入服务启动时打印的访问密钥<br><span class="auth-sub">服务重启后密钥会更换，需重新校验</span></p>
+    <input id="authKey" type="password" placeholder="访问密钥" autocomplete="off" spellcheck="false">
+    <button id="authBtn" class="btn btn-primary">校 验</button>
+    <div id="authError" class="auth-error hidden"></div>
+  </div>
+</div>
+
+<script src="/static/app.js?v=4"></script>
 </body>
 </html>

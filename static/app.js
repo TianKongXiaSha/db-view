@@ -5,6 +5,12 @@ let searchTimer = null;
 let selectedDb = null;     // 对象浏览器当前库
 let selectedTable = null;  // 对象浏览器当前表
 
+/* 访问密钥校验 */
+const AUTH_TOKEN_KEY = "dbview_auth_token";
+let authed = false;
+let authChecking = false;
+const getAuthToken = () => localStorage.getItem(AUTH_TOKEN_KEY) || "";
+
 /* SQL 联想用元数据缓存 */
 let schemaDbs = [];                 // 可见数据库名
 const schemaTables = {};            // { db: [table, ...] }
@@ -38,10 +44,14 @@ function highlightKeyword(name, kw) {
 }
 
 async function api(url, options = {}) {
+  if (!url.startsWith("/api/auth/")) {
+    options.headers = Object.assign({}, options.headers, { "X-Auth-Token": getAuthToken() });
+  }
   const resp = await fetch(url, options);
   let data = null;
   try { data = await resp.json(); } catch (e) { /* ignore */ }
   if (!resp.ok) {
+    if (resp.status === 401 && !url.startsWith("/api/auth/")) showAuthGate("会话已失效（服务可能已重启），请重新校验");
     const err = new Error((data && data.error) || `HTTP ${resp.status}`);
     err.data = data;
     throw err;
@@ -263,7 +273,7 @@ $("resultArea").addEventListener("click", (e) => {
   const btn = e.target.closest(".exp-export");
   if (!btn) return;
   if (!connected) { toast("请先连接数据库", "error"); return; }
-  const qs = new URLSearchParams({ path: selectedFile, sql: btn.dataset.exportSql });
+  const qs = new URLSearchParams({ path: selectedFile, sql: btn.dataset.exportSql, token: getAuthToken() });
   if (selectedDb) qs.set("db", selectedDb);
   toast("正在导出 CSV…");
   window.location.href = "/api/export?" + qs.toString();
@@ -282,7 +292,7 @@ loadTables = function (db) { updateExportBtn(); return _loadTables(db); };
 
 $("exportTableBtn").addEventListener("click", () => {
   if (!connected || !selectedDb || !selectedTable) { toast("请先在对象浏览器中选择表", "error"); return; }
-  const qs = new URLSearchParams({ path: selectedFile, db: selectedDb, table: selectedTable });
+  const qs = new URLSearchParams({ path: selectedFile, db: selectedDb, table: selectedTable, token: getAuthToken() });
   toast("正在导出整表 CSV…（数据量大时请耐心等待）");
   window.location.href = "/api/export?" + qs.toString();
 });
@@ -766,8 +776,78 @@ function renderResults(results, totalMs) {
   });
 }
 
+/* ---------------- 访问密钥校验 ---------------- */
+function showAuthGate(msg) {
+  authed = false;
+  const gate = $("authGate");
+  gate.classList.remove("hidden");
+  const err = $("authError");
+  if (msg) { err.textContent = msg; err.classList.remove("hidden"); }
+  const input = $("authKey");
+  input.value = "";
+  setTimeout(() => input.focus(), 50);
+}
+
+function hideAuthGate() {
+  authed = true;
+  $("authGate").classList.add("hidden");
+  $("authError").classList.add("hidden");
+  $("authKey").value = "";
+}
+
+async function verifyAuthKey() {
+  if (authChecking) return;
+  const key = $("authKey").value.trim();
+  const err = $("authError");
+  if (!key) { err.textContent = "请输入访问密钥"; err.classList.remove("hidden"); return; }
+  authChecking = true;
+  const btn = $("authBtn");
+  btn.disabled = true;
+  btn.textContent = "校验中…";
+  try {
+    const data = await api("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+    hideAuthGate();
+    initApp();
+    toast("校验成功", "success");
+  } catch (e) {
+    err.textContent = e.message || "校验失败";
+    err.classList.remove("hidden");
+    $("authKey").select();
+  } finally {
+    authChecking = false;
+    btn.disabled = false;
+    btn.textContent = "校 验";
+  }
+}
+
+$("authBtn").addEventListener("click", verifyAuthKey);
+$("authKey").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); verifyAuthKey(); }
+});
+
 /* ---------------- 初始化 ---------------- */
-loadConfig();
-loadFiles();
-renderPresets();
-updateHighlight();
+function initApp() {
+  if (initApp._done) return;
+  initApp._done = true;
+  loadConfig();
+  loadFiles();
+  renderPresets();
+  updateHighlight();
+}
+
+(async function checkAuthOnLoad() {
+  updateHighlight();
+  try {
+    await api("/api/auth/status");
+    hideAuthGate();
+    initApp();
+  } catch (e) {
+    // 401 已由 api() 弹出校验层；无 token 时主动弹出
+    if (!getAuthToken()) showAuthGate();
+  }
+})();

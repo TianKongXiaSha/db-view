@@ -327,3 +327,36 @@ td.null { color: var(--text-dim); font-style: italic; }
   color: var(--primary); font-size: 11px; padding: 2px 8px; cursor: pointer;
 }
 .exp-export:hover { border-color: var(--primary); }
+
+/* ---------- 访问密钥校验层 ---------- */
+.auth-gate {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(10, 12, 18, .82);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+}
+.auth-card {
+  width: 360px; max-width: calc(100vw - 40px);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 32px 28px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+}
+.auth-card .brand-icon { width: 46px; height: 46px; font-size: 15px; }
+.auth-card h2 { font-size: 17px; font-weight: 600; }
+.auth-tip { font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }
+.auth-sub { font-size: 11px; color: var(--text-dim); opacity: .75; }
+.auth-card input {
+  width: 100%; padding: 10px 12px;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--mono); font-size: 14px;
+  letter-spacing: 2px; text-align: center; outline: none; transition: border-color .15s;
+}
+.auth-card input:focus { border-color: var(--primary); }
+.auth-card .btn { width: 100%; padding: 10px 0; font-size: 14px; }
+.auth-error {
+  width: 100%; font-size: 12px; color: var(--red);
+  background: rgba(240, 85, 95, .1); border: 1px solid rgba(240, 85, 95, .35);
+  border-radius: 8px; padding: 8px 10px;
+}

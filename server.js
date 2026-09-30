@@ -3,9 +3,29 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { execFile } = require("child_process");
 
 const BASE_DIR = __dirname;
+
+/* ---------- 访问密钥校验 ----------
+ * 密钥每次服务启动时随机生成并打印到控制台；
+ * 校验通过后向浏览器签发随机会话 token（仅存内存）。
+ * 服务重启 => token 全部失效 => 客户端需用新密钥重新校验；
+ * token 存于浏览器 localStorage => 换浏览器/换电脑需重新校验。 */
+const ACCESS_KEY = crypto.randomBytes(8).toString("hex").toUpperCase();
+const AUTH_TOKENS = new Set();
+
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a || "")), bb = Buffer.from(String(b || ""));
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+
+function checkAuth(req, url) {
+  const h = req.headers["x-auth-token"];
+  const token = (typeof h === "string" && h) || url.searchParams.get("token") || "";
+  return !!(token && AUTH_TOKENS.has(token));
+}
 
 function loadConfig() {
   const cfg = {};
@@ -259,6 +279,23 @@ const server = http.createServer(async (req, res) => {
   try {
     if (!p.startsWith("/api/")) return serveStatic(res, p);
 
+    /* ---- 访问密钥校验 ---- */
+    if (p === "/api/auth/status")
+      return sendJson(res, checkAuth(req, url) ? 200 : 401, { authed: checkAuth(req, url) });
+
+    if (p === "/api/auth/verify" && req.method === "POST") {
+      const body = await readBody(req);
+      if (!safeEqual((body.key || "").trim(), ACCESS_KEY))
+        return sendJson(res, 401, { error: "密钥错误，请检查服务启动时打印的访问密钥" });
+      const token = crypto.randomBytes(24).toString("hex");
+      AUTH_TOKENS.add(token);
+      return sendJson(res, 200, { token });
+    }
+
+    /* 其余接口均需已校验的会话 token */
+    if (!checkAuth(req, url))
+      return sendJson(res, 401, { error: "未校验或会话已失效（服务可能已重启），请重新输入访问密钥" });
+
     if (p === "/api/config")
       return sendJson(res, 200, { scripts_dir: SCRIPTS_DIR, valid_dir: !!(SCRIPTS_DIR && fs.existsSync(SCRIPTS_DIR)) });
 
@@ -449,6 +486,10 @@ if (require.main === module) {
     console.log("[db-view] 脚本目录:", SCRIPTS_DIR || "(未配置!)");
     console.log("[db-view] 服务启动: http://" + CONFIG.server.host + ":" + CONFIG.server.port);
     console.log("[db-view] Node 版本:", process.version);
+    console.log("[db-view] ============================================================");
+    console.log("[db-view] 本次启动的访问密钥: " + ACCESS_KEY);
+    console.log("[db-view] 浏览器首次打开页面需输入该密钥校验；服务重启后密钥与会话均会更新，需重新校验。");
+    console.log("[db-view] ============================================================");
   });
 } else {
   module.exports = { parseMysqlCommand, splitSqlStatements, parseTsv, listFiles };
